@@ -1,0 +1,14 @@
+### Project-wide concerns
+* setup code standards
+* how to test the code thoroughly
+
+### AMTED server TODO
+* investigate tcp libraries
+* detailed diagram of server workflow
+* inventory of system calls, functions and libraries needed
+* system/subsystem design
+* division of labor (programming-wise)
+* Investigate testing frameworks for code 
+
+### Shell implementation
+* mechanism to handle piping and forking
