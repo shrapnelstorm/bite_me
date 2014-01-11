@@ -1,0 +1,22 @@
+### retrieving changes from the git server
+git pull origin master
+
+### sending changes to git server
+git push origin master
+
+### working locally with files
+git add <filename> 				add a new file, add the changes to an existing file
+
+git diff						per file, lists lines added (+) and lines removed (-)
+
+git status						the status of each file, ready to commit, changed, etc
+
+git diff --cached				lists only lines added/removed to files scheduled for commit
+
+git commit -m "message"			commit a file withn the given message
+
+
+### recovering from errors
+git checkout <file> 			go back to the last saved version of a file
+git reset --hard HEAD			reset entire repository to last saved state
+
