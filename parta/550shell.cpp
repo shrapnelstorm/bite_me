@@ -19,7 +19,7 @@ int main() {
 	const char delim[] = " \t\n" ;// TODO: add other delimiters
 
 	scanf("%s", &user_input) ; // read first line and begin looping
-	while (user_input != "exit") {
+	while (strcmp(user_input, "exit") != 0) {
 
 		// tokenize input
 		char *fst_token, *snd_token ;
