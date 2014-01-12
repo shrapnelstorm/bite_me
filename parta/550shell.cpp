@@ -1,7 +1,41 @@
+// cpp includes
 #include <iostream>
+#include <string>
+
+// c includes
+#include <string.h>
+#include <stdio.h>
+using namespace std;
+
 
 int main() {
-	std::cout << "hello world\n" ;
+	char user_input[80] ;
+	const char delim[] = " \t\n" ;// TODO: add other delimiters
+
+	scanf("%s", &user_input) ; // read first line and begin looping
+	while (user_input != "exit") {
+
+		// tokenize input
+		char *fst_token, *snd_token ;
+		fst_token = strtok(user_input, delim); 
+		snd_token = strtok(NULL, delim) ;
+
+		// begin parsing the inputs
+		bool wait_for_children = true ;
+		while ( fst_token != NULL) {
+			printf("%s ## %s \n", fst_token, snd_token );
+
+			// read next tokens
+			// XXX: Does the first token change at all?
+			fst_token = strtok(NULL, delim); 
+			snd_token = strtok(NULL, delim) ;
+		}
+
+		// wait for process completion
+
+		// read next input
+		scanf("%s", &user_input) ; 
+	}
 }
 
 int setup_pip(int &cur_output, int &next_input){
