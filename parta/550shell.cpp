@@ -1,13 +1,19 @@
-// cpp includes
-#include <iostream>
-#include <string>
 
 // c includes
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <cstdlib>
+
 using namespace std;
 
+// function prototypes
+int setup_pip(int &cur_output, int &next_input);
+int init_child(char* cmd, int input, int output);
 
+const int STD_IN = 0 , STD_OUT = 1 ;
 int main() {
 	char user_input[80] ;
 	const char delim[] = " \t\n" ;// TODO: add other delimiters
@@ -22,6 +28,11 @@ int main() {
 
 		// begin parsing the inputs
 		bool wait_for_children = true ;
+
+		// input and output file descriptors
+		int cur_input = STD_IN, next_input = STD_IN ;
+		int cur_output = STD_OUT, next_output = STD_OUT ;
+		pid_t last_pid ;
 		while ( fst_token != NULL) {
 			printf("%s ## %s \n", fst_token, snd_token );
 
@@ -29,9 +40,31 @@ int main() {
 			// XXX: Does the first token change at all?
 			fst_token = strtok(NULL, delim); 
 			snd_token = strtok(NULL, delim) ;
+
+			if (strcmp(snd_token, "|") == 0) {
+				setup_pip(cur_output, next_input);
+
+				// FORK HERE
+			}
+			else if (strcmp(snd_token, "&") == 0) {
+				wait_for_children = false ;
+			}
+
+			if( 0 == (last_pid = fork())) {
+				init_child(fst_token, cur_input, cur_output) ;
+			}
+
+			// update I/O due to piping
+			cur_input = next_input ;
+			cur_output = STD_OUT ; 
 		}
 
 		// wait for process completion
+		if (wait_for_children){
+			int status ;
+			// TODO: do we want any options here??
+			waitpid(last_pid, &status, 0 /*options*/) ;
+		}
 
 		// read next input
 		scanf("%s", &user_input) ; 
