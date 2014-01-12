@@ -46,6 +46,7 @@ int main() {
 
 		// begin parsing the inputs
 		bool wait_for_children = true ;
+		bool forked = false ;
 
 		// input and output file descriptors
 		int cur_input = STD_IN, next_input = STD_IN ;
@@ -60,6 +61,7 @@ int main() {
 			//printf("first arg: %s second arg: %s", fst_token, snd_token) ;
 			if (snd_token != NULL && strcmp(snd_token, "|") == 0) {
 				//setup_pip(cur_output, next_input);
+				forked = true ;
   int pip[2];
   int result;
   result = pipe(pip);
@@ -88,6 +90,12 @@ int main() {
 				//printf("Inside child with cmd %s", fst_token) ;
 				printf("fst token: %s\n ", fst_token) ;
 				init_child(fst_token, cur_input, cur_output) ;
+			} else {
+				if (forked && cur_output > 1) {
+					close(cur_output) ;
+				}
+				if (forked && cur_input > 1) {
+				}
 			}
 			//printf("Inside parent with cmd %s", fst_token) ;
 
@@ -101,9 +109,13 @@ int main() {
 			fst_token = strtok(NULL, delim); 
 			snd_token = strtok(NULL, delim) ;
 
+			int status ;
+			// TODO: do we want any options here??
+			waitpid(last_pid, &status, 0 ) ;
 		}
 
 		
+		/*
 		// wait for process completion
 		if (wait_for_children){
 			int status ;
@@ -111,6 +123,7 @@ int main() {
 			waitpid(last_pid, &status, 0 ) ;
 			//wait(0) ;
 		}
+		*/
 
 		// read next input
 		getline(&user_input, &len, stdin) ; // read first line and begin looping
