@@ -1,7 +1,7 @@
 TARGETS=550server
 
-550server: 550server.c
-	gcc -g -o 550server 550server.c
+550server: 550server.cpp
+	g++ -g -o 550server 550server.cpp
 
 all: $(TARGETS)
 
