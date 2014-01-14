@@ -24,8 +24,21 @@ int main() {
 	size_t len 				= 0 ;
 	ssize_t chars_read ;
 	const char delim[] 		= " \t\n" ;
+	int pid,length;
+	bool check_background = false;
 	printf("%s", ":)>\n");  /* prompt */
-	chars_read = getline(&user_input, &len, stdin) ; 
+	chars_read = getline(&user_input, &len, stdin) ;
+	length = strlen(user_input); 
+	if(user_input[length-2] == '&'){
+		pid = fork();
+		if(pid == 0){
+			check_background = true;	
+		}
+		else{
+			chars_read = getline(&user_input, &len, stdin) ;	
+		}
+	}
+	
 
 	while ( strcmp(user_input, "exit") != 0) {
 
@@ -55,7 +68,7 @@ int main() {
 			last_pid = fork() ;
 			if( 0 == last_pid ) {
 				init_child(fst_token, cur_input, cur_output) ;
-			} else {
+			} else {				// this ensures that the pipes are closed at the right stages.
 				if (forked && cur_output > 1) {
 					close(cur_output) ;
 				}
@@ -75,19 +88,31 @@ int main() {
 			int status ;
 			// TODO: do we want any options here??
 			waitpid(last_pid, &status, 0 ) ;
+			if(check_background) exit(1);
 		}
 		
 		// read next input
 		printf("%s", ":)>\n");  /* prompt */
 		getline(&user_input, &len, stdin) ; // read first line and begin looping
 		printf("%s", user_input) ;
-		printf("%i", strcmp(user_input, "exit")) ;
+		printf("%i\n", strcmp(user_input, "exit")) ;
+		length = strlen(user_input);
+		if(user_input[length-2] == '&'){  // this portion of the code makes sure that the process runs in the background.
+			pid = fork();
+			if(pid == 0){
+				check_background = true;
+			}
+			else{
+				check_background = false;
+				chars_read = getline(&user_input, &len, stdin) ;	
+			}
+		}
 	}
 	// free user input buffer used by getline
 	free(user_input) ;
 }
 
-int setup_pip(int &cur_output, int &next_input){
+int setup_pip(int &cur_output, int &next_input){  // function to set up pipes 
   int pip[2];
   int result;
   result = pipe(pip);
@@ -97,7 +122,7 @@ int setup_pip(int &cur_output, int &next_input){
     exit(1);
   }
   else {
-    cur_output = pip[1];
+    cur_output = pip[1];         // updating the current and next variable with the pipe's input and output file descriptors
     next_input = pip[0];
   }
   return 1;
@@ -106,6 +131,7 @@ int setup_pip(int &cur_output, int &next_input){
 int init_child(char* cmd, int input, int output){
   int result1,result2;
   result1 = dup2(input,0);
+  // Changing the input/output 'sockets' to point to the appropriate pipe
   if(result1 == -1){
     perror("dup2 failed");
     exit(1);
