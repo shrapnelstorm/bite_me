@@ -1,9 +1,3 @@
-/*#include <iostream>
-#include <sstream>
-#include <string>
-*/
-
-// c includes
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -24,28 +18,29 @@ int main() {
 	size_t len 				= 0 ;
 	ssize_t chars_read ;
 	const char delim[] 		= " \t\n" ;
-	printf("%s", ":)>\n");  /* prompt */
+	printf("%s", ":)>");  /* prompt */
 	chars_read = getline(&user_input, &len, stdin) ; 
 
-	while ( strcmp(user_input, "exit") != 0) {
+	while ( strcmp(user_input, "exit\n") != 0) {
 
+		// begin parsing the inputs
 		char *fst_token, *snd_token ;
 		fst_token = strtok(user_input, delim); 
 		snd_token = strtok(NULL, delim) ;
 
-		// begin parsing the inputs
-		bool wait_for_children = true ;
-		bool forked = false ;
+		bool wait_for_children	= true ; /* if an ampersand was seen */
+		bool piped				= false ;			/* if piped output */
 
 		// input and output file descriptors
 		int cur_input = STD_IN, next_input = STD_IN ;
 		int cur_output = STD_OUT, next_output = STD_OUT ;
 		pid_t last_pid ;
+
 		while ( fst_token != NULL) {
 
 			if (snd_token != NULL && strcmp(snd_token, "|") == 0) {
 				setup_pip(cur_output, next_input);
-				forked = true ;
+				piped = true ;
 			}
 			else if (snd_token != NULL && strcmp(snd_token, "&") == 0) {
 				wait_for_children = false ;
@@ -56,10 +51,10 @@ int main() {
 			if( 0 == last_pid ) {
 				init_child(fst_token, cur_input, cur_output) ;
 			} else {
-				if (forked && cur_output > 1) {
+				if (piped && cur_output > 1) {
 					close(cur_output) ;
 				}
-				if (forked && cur_input > 1) {
+				if (piped && cur_input > 1) {
 				}
 			}
 
@@ -68,7 +63,6 @@ int main() {
 			cur_output = STD_OUT ; 
 			
 			// read next tokens
-			// XXX: Does the first token change at all?
 			fst_token = strtok(NULL, delim); 
 			snd_token = strtok(NULL, delim) ;
 
@@ -77,14 +71,15 @@ int main() {
 			waitpid(last_pid, &status, 0 ) ;
 		}
 		
+		
 		// read next input
-		printf("%s", ":)>\n");  /* prompt */
+		printf("%s", ":)>");  /* prompt */
 		getline(&user_input, &len, stdin) ; // read first line and begin looping
-		printf("%s", user_input) ;
-		printf("%i", strcmp(user_input, "exit")) ;
 	}
-	// free user input buffer used by getline
+	
+	// free user_input buffer created by getline
 	free(user_input) ;
+	exit(0) ;
 }
 
 int setup_pip(int &cur_output, int &next_input){
