@@ -17,8 +17,8 @@
 #include <iostream>
 
 void run_server(int socket) ;
-void addClient(int server_sock, fd_set* master_fds) ;
-void iterateFDSet(fd_set *ready_set, int &ready_count, int &max_socket, int serv_socket) ;
+void addClients(int server_sock, fd_set* master_fds, int &max_socket) ;
+void iterateFDSet(fd_set *ready_set, fd_set *master_set, int &ready_count, int &max_socket, int serv_socket) ;
 
 // XXX: figure out weird default argument error
 void exitWithError(bool condition, const char msg[], int status=1) {
@@ -101,7 +101,7 @@ void run_server(int socket) {
 		}
 		else {
 			// iterate through the processes that are ready
-			iterateFDSet(&working_fds, num_ready, max_sd, socket) ;
+			iterateFDSet(&working_fds, &master_fds, num_ready, max_sd, socket) ;
 			//iterateFDSet(&writing_fds, num_ready, max_sd, socket) ;
 		}
 
@@ -112,13 +112,16 @@ void run_server(int socket) {
 /*
  * @return the new max socket descriptor
  */
-void iterateFDSet(fd_set *ready_set, int &ready_count, int &max_socket, int serv_socket) {
+void iterateFDSet(fd_set *ready_set, fd_set *master_set, int &ready_count, int &max_socket, int serv_socket) {
 	for (int i=0 ; i <= max_socket && ready_count > 0; i++) {
 		if ( !(FD_ISSET(i, ready_set)) )
 			continue ;
 
 		if (i == serv_socket ) {
 		// accept all incomming connections
+			addClients(serv_socket, master_set, max_socket) ;
+		} else {
+			// handle existing client
 		}
 	}
 }
@@ -129,18 +132,20 @@ void iterateFDSet(fd_set *ready_set, int &ready_count, int &max_socket, int serv
  * @param server_sock socket descriptor for server
  * @param master_fds master list of open socket file descriptors
  */
-void addClient(int server_sock, fd_set* master_fds) {
+void addClients(int server_sock, fd_set* master_fds, int &max_socket) {
 	int new_socket ;
-	struct sockaddr_in remote_addr ;
-	unsigned int socklen = sizeof(remote_addr) ;
 
 	do {
-		new_socket = accept(server_sock, (struct sockaddr*)&remote_addr, &socklen) ;
+		// TODO: should we instantiate sockaddr_in objects ??
+		new_socket = accept(server_sock, NULL, NULL) ;
 		exitWithError(new_socket < 0 && errno != EWOULDBLOCK, "accept failed\n") ;
 
 		FD_SET(new_socket, master_fds) ; // add new client to fd_list
 
 		// TODO: initialize new client struct !!
+
+		if (new_socket > max_socket)
+			max_socket = new_socket ;
 
 	} while (new_socket != -1) ;
 
