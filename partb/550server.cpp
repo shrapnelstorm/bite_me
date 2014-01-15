@@ -18,6 +18,7 @@
 
 void run_server(int socket) ;
 void addClients(int server_sock, fd_set* master_fds, int &max_socket) ;
+void removeClient(int client, fd_set *master_set) ;
 void iterateFDSet(fd_set *ready_set, fd_set *master_set, int &ready_count, int &max_socket, int serv_socket) ;
 
 // XXX: figure out weird default argument error
@@ -105,7 +106,6 @@ void run_server(int socket) {
 			//iterateFDSet(&writing_fds, num_ready, max_sd, socket) ;
 		}
 
-
 	}
 }
 
@@ -121,10 +121,26 @@ void iterateFDSet(fd_set *ready_set, fd_set *master_set, int &ready_count, int &
 		// accept all incomming connections
 			addClients(serv_socket, master_set, max_socket) ;
 		} else {
-			// handle existing client
+			char buffer[255] ;
+			int recv_count ;
+			memset(buffer, 0, 255) ;
+			recv_count = recv(i, buffer, 255, 0 ) ;
+			if ( recv_count <= 0 ) {
+				removeClient(i, master_set) ;
+			} else {
+				printf("received message:%s\n", buffer) ;
+			}
 		}
 	}
 }
+
+void removeClient(int client, fd_set *master_set) {
+	// TODO: remove any data too
+	// TODO: remove isn't happening until some other event occurs
+	printf("client %i removed", client) ;
+	FD_CLR(client, master_set) ;
+}
+
 // TODO: make this object oriented, so passing parameters is less painful.
 /*
  * Creates state struture for new client and adds new socket to
