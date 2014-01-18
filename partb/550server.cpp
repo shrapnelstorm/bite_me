@@ -1,19 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/ioctl.h> // for the ioctl() function call
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <errno.h>
-#include "pipe.hpp"
-
+#include "main_header.hpp"
+#include "tcp_server.hpp"
 
 #include <iostream>
 
@@ -22,18 +8,14 @@ void addClients(int server_sock, fd_set* master_fds, int &max_socket) ;
 void removeClient(int client, fd_set *master_set) ;
 void iterateFDSet(fd_set *ready_set, fd_set *master_set, int &ready_count, int &max_socket, int serv_socket) ;
 
-// XXX: figure out weird default argument error
-void exitWithError(bool condition, const char msg[], int status=1) {
-	if (condition) {
-		perror(msg) ;
-		exit(status) ;
-	}
-}
-
 int main(int argc, char** argv) {
 	
 	// check for cmd line arguments
 	exitWithError( argc < 3, "Usage: ./550server <ip_addr> <port>", 0) ;
+
+	TCPServer server(argv[1], argv[2]) ;
+	server.runServer() ;
+/*	
 
 	// setup server address info
 	struct addrinfo server_info, *server_info_list ;
@@ -68,6 +50,7 @@ int main(int argc, char** argv) {
 	// free the server_info_list  & close socket
 	freeaddrinfo(server_info_list) ;
 	close(server_socket) ;
+	*/
 	return 0 ;
 }
 
@@ -75,6 +58,7 @@ int main(int argc, char** argv) {
 void run_server(int socket) {
 	// setup the select data structures that are necessary
 	fd_set 	master_fds, working_fds ;
+	FD_SET(socket, &master_fds) ; // add server socket to master_fds
 	timeval	timeout ;
 	int  max_sd = socket, new_fd ; // max_fd stores highest valued fd
 
