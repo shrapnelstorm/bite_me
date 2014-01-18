@@ -17,10 +17,6 @@
 #include <errno.h>
 
 // XXX: figure out weird default argument error
-void exitWithError(bool condition, const char msg[], int status=1) {
-	if (condition) {
-		perror(msg) ;
-		exit(status) ;
-	}
-}
+void exitWithError(bool , const char [], int ) ;
+void exitWithError(bool , const char []) ;
 #endif // MAIN_HEADER
