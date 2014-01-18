@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <errno.h>
+#include "pipe.hpp"
 
 
 #include <iostream>
