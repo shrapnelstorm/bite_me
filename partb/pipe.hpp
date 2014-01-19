@@ -1,3 +1,5 @@
+#ifndef PIPE_HPP
+#define PIPE_HPP
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -68,3 +70,5 @@ void TwoWayPipe::threadpoolRead() {
 
 void TwoWayPipe::threadpoolWrite() {
 }
+
+#endif // PIPE_HPP
