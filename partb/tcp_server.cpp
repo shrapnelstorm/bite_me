@@ -84,7 +84,10 @@ void TCPServer::addClients() {
 		new_socket = accept(server_socket, NULL, NULL) ;
 		exitWithError(new_socket < 0 && errno != EWOULDBLOCK, "accept failed\n") ;
 
-		FD_SET(new_socket, &master_fds) ; // add new client to fd_list
+		// add new client to map and fd_set
+		FD_SET(new_socket, &master_fds) ; 
+		ClientData new_client ;
+		client_map[new_socket] = new_client ; 
 
 		// TODO: initialize new client struct !!
 
@@ -99,6 +102,7 @@ void TCPServer::removeClient(int client) {
 	// TODO: remove any data too
 	// TODO: remove isn't happening until some other event occurs
 	FD_CLR(client, &master_fds) ;
+	client_map.erase(client) ;
 }
 
 /*
@@ -134,4 +138,10 @@ void TCPServer::bindSocketAndListen() {
 
 	// ensure the parameters to listen() are correct, buffer size is 32
 	exitWithError((listen(server_socket, 32) == -1), "listen error") ;
+}
+
+
+// code to communicate with clients
+ClientData TCPServer::sentToClient(ClientData data) {
+	return data ;	
 }

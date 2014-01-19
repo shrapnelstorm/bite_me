@@ -3,26 +3,27 @@
 
 #include "main_header.hpp"
 #include "twowaypipe.hpp"
-/*
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/ioctl.h> // for the ioctl() function call
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <errno.h>
-*/
-//#include "pipe.hpp"
+#include <map>
 
 // TODO: the current # of connections to wait on is 32, is this adequate
 // TODO: ensure server is closing unused tcp connections
+
+enum State { LOADING_FILE, SENDING_FILE, DONE, READY } ;
+class ClientData {
+	public:
+		size_t bytes_sent ;
+		size_t total_file_size ;
+		void* file_addr ;
+		State state ;
+	
+	public:
+		ClientData() { 
+			bytes_sent = 0;
+			total_file_size = 0 ;
+			file_addr = NULL ;
+			state = READY ;
+		}
+};
 
 class TCPServer {
 	private:
@@ -31,6 +32,9 @@ class TCPServer {
 		fd_set 	master_fds, working_fds ; // socket descriptors we're listening to
 		TwoWayPipe* tcp_pipe ;
 		int  max_sd, new_fd ; // max_fd stores highest valued fd
+
+		// socket_id --> client state
+		std::map<int, ClientData> client_map ;
 
 	public:
 		TCPServer(char address[], char port[], TwoWayPipe* pipe) ;
@@ -43,7 +47,10 @@ class TCPServer {
 		void iterateFDSet(fd_set *ready_set, int &ready_count) ;
 		void addClients() ;
 		void removeClient(int client) ;
+
+		ClientData sentToClient(ClientData data) ;
 };
+
 
 
 
