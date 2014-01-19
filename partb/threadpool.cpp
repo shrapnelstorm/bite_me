@@ -1,63 +1,56 @@
-#include<iostream>
-#include<stdio.h>
-#include <sys/mman.h>
-#include <pthreads.h>
+// XXX: WARNING, I've disabled all pipe write and read lines
+// until we resolve a serialization issue.
+#include <iostream>
+#include "threadpool.hpp"
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#define FILESIZE (1000 * sizeof(char)) // how to fix this?
-#define STD_IN 0
-#define STD_OUT 1
-#define thread_no 50
 
-pthread_mutex_t thread_avail[thread_no] = {PTHREAD_MUTEX_INITIALIZER}
-int avail[k];
+Thread_pool* Thread_pool::tp_instance = NULL ;
 
-struct Thread_input{
-	int socket_id;
-	char *filename;
-};
-
-class Thread_output{
-	void *memory_map;
-	int socket_id;
-	int fd;
-public: Thread_output(void *mmp,int s_id, int fd);
-};
-
-struct thread_pool_input{
-	int pipe_write;
-	int socket_id;
-	
-};
-Thread_output::Thread_output(void *mmp, int s_id){
+Thread_output::Thread_output(void* mmp, int s_id, int fd){
 	memory_map = mmp; // do we need a copy constructor here?
 	socket_id = s_id;
 	fd = fd;
 }
 
-class Thread_pool{
-	private:
-		TwoWayPipe p;
-		TwoWayPipe pipe_threads[k];
-	public:
-		Thread_pool(TwoWayPipe p);
-		void *helper_thread(void *pipe_rw);
-		void *thread_pool(void *input);
-		
+Thread_pool::Thread_pool(){
+	thread_pool() ;
+
+	// set the availability of each thread to 1
+	for ( int i = 0 ; i < thread_no; i++) {
+		avail[i] = 1;
+	}
+
 }
 
-class Thread_pipe{
-	int read;
-	int write;
-	int thread_id;
-	int pipe_write;
-};
-
-Thread_pool::Thread_pool(TwoWayPipe p){
-	p = p;
+Thread_pool* Thread_pool::getThreadPool() {
+	if ( tp_instance == NULL) {
+		tp_instance = new Thread_pool() ;
+	} 
+	
+	return tp_instance ;
 }
-Thread_pool::void *helper_thread(void *thread_id){
+
+// ================== thread helper, helper functions ====================
+void Thread_pool::makeHelperAvailable(int helper_id) {
+		pthread_mutex_lock(&(thread_avail[helper_id]));
+		avail[helper_id] = 1;
+		pthread_mutex_unlock(&(thread_avail[helper_id]) );
+}
+
+void* Thread_pool::helper_thread(void *t_id){
+
+	const int thread_id = *((int*) t_id) ;
+	delete ((int*) t_id) ; // free heap memory
+
+	Thread_pool* tpool = Thread_pool::getThreadPool() ;
+	TwoWayPipe tpool_pipe = tpool->pipe_threads[thread_id] ;
+	TwoWayPipe tcp_pipe = tpool->p ;
+
 	int fd;
-	char* map;
+	void* map;
 	int result;
 	Thread_input input;
 	//result = dup2(pipe_rw.read, STD_IN);
@@ -65,44 +58,52 @@ Thread_pool::void *helper_thread(void *thread_id){
 	//	perror("dup2 failed");	
 	//}	
 	while(1){
-		int read_size = read(pipe_threads[thread_id].tp_read, input, sizeof(input));
+		//int read_size = tpool_pipe.threadpoolRead(input, sizeof(input));
 		fd = open(input.filename, O_RDONLY);
 		if(fd == -1){
 			perror("Error opening file");
 			// should we exit here?	
+			// TODO: notify tcp server that file isn't available
 		}
 		map = mmap(0,FILESIZE, PROT_READ, MAP_SHARED,fd,0);
-		if(map = MAP_FAILED){
-			// how should we respond? should we keep trying?	
+		if(map == MAP_FAILED){
+			// TODO: how should we respond? should we keep trying?	
 		}
 		
 		Thread_output output(map,input.socket_id,fd);
 		// send output via pipe
-		write(p.tp_write,output,sizeof(output));
-		pthread_mutex_lock(&thread_avail[thread_id]);
-		avail[thread_id] = 1;
-		pthread_mutex_unlock(&thread_avail[thread_id]);
+		//tcp_pipe.threadpoolWrite(output,sizeof(output));
+		tpool->makeHelperAvailable(thread_id) ;
 	}
+	return NULL ;
 }
 
-Thread_pool::void *thread_pool(void *input){
-	pthread_t thread[k];
-	int i;
-	for(i=0;i<k;i++){
-		pthread_create(&thread[i],NULL,helper_thread,(void *)i);	
-	}
+void Thread_pool::runThreadpool() {
+	int i ;
 	Thread_input input;
 	while(1){
-		read(p.tp_read,input,sizeof(input));
-		for(i=0;i<k;i++){
-			pthread_mutex_lock(&thread_avail[i]);
+		//p.threadpoolRead(input,sizeof(input));
+		for(i=0;i<thread_no;i++){
+			// TODO: better way to handle notifications?
+			// This will slow down our threadpool
+			pthread_mutex_lock(&(thread_avail[i]));
 			if(avail[i]){
 				avail[i] = 0;
-				pthread_mutex_unlock(&thread_avail[i]);
+				pthread_mutex_unlock(&(thread_avail[i]));
 				break;			
 			}
-			pthread_mutex_unlock(&thread_avail[i]);		
+			pthread_mutex_unlock(&(thread_avail[i]));		
 		}
-		write(pipe_threads[i].s_write,input,sizeof(input));
+		//pipe_threads[i].serverWrite(&input, sizeof(input)) ;
 	}		
+}
+
+// XXX: Siva, why did this originally have a void* param??
+void Thread_pool::thread_pool(){
+	int i;
+	for(i=0;i<thread_no;i++){
+		int* thread_id  = new int ;
+		*thread_id = i ;
+		pthread_create(&thread[i],NULL,helper_thread,(void *)thread_id);	
+	}
 }
