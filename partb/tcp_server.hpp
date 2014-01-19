@@ -8,18 +8,18 @@
 // TODO: the current # of connections to wait on is 32, is this adequate
 // TODO: ensure server is closing unused tcp connections
 
-enum State { LOADING_FILE, SENDING_FILE, DONE, READY } ;
+enum State { WAITING_MMAP, SENDING_FILE, DONE, READY } ;
 class ClientData {
 	public:
 		size_t bytes_sent ;
-		size_t total_file_size ;
+		size_t total_bytes ;
 		void* file_addr ;
 		State state ;
 	
 	public:
 		ClientData() { 
 			bytes_sent = 0;
-			total_file_size = 0 ;
+			total_bytes = 0 ;
 			file_addr = NULL ;
 			state = READY ;
 		}
@@ -29,7 +29,11 @@ class TCPServer {
 	private:
 		struct addrinfo server_info, *server_info_list ;
 		int server_socket ;
-		fd_set 	master_fds, working_fds ; // socket descriptors we're listening to
+		
+		// socket descriptors we're listening to
+		fd_set 	master_read_fds, tmp_read_fds ; 
+		fd_set 	master_write_fds, tmp_write_fds ; 
+
 		TwoWayPipe* tcp_pipe ;
 		int  max_sd, new_fd ; // max_fd stores highest valued fd
 
@@ -44,7 +48,8 @@ class TCPServer {
 	private:
 		void initServer(char address[], char port[]) ;
 		void bindSocketAndListen() ;
-		void iterateFDSet(fd_set *ready_set, int &ready_count) ;
+		int iterateReadSet(fd_set *ready_set, int ready_count) ;
+		int iterateWriteSet(fd_set *write_set, int ready_count) ;
 		void addClients() ;
 		void removeClient(int client) ;
 

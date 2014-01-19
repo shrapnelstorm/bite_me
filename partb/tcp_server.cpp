@@ -22,17 +22,19 @@ void TCPServer::runServer() {
 	timeout.tv_usec = 0 ;
 
 	max_sd = server_socket ; // max_fd stores highest valued fd
-	FD_SET(server_socket, &master_fds) ; // add server socket to master_fds
+	FD_SET(server_socket, &master_read_fds) ; // add server socket 
+	FD_SET(tcp_pipe->getSRead(), &master_read_fds) ; // add tpool pipe 
 
 	// listen for connections & process existing conn.
 	int num_ready = 0 ;
 	while (true) {
 		// copy master set to working set
-		memcpy(&working_fds, &master_fds, sizeof(master_fds)) ;
+		memcpy(&tmp_read_fds, &master_read_fds, sizeof(master_read_fds)) ;
+		memcpy(&tmp_write_fds, &master_write_fds, sizeof(master_write_fds)) ;
 
 		// call select()
 		//select(max_file_desc, read_set, write_set, exceptions, timeout)
-		num_ready = select(max_sd + 1, &working_fds, NULL, NULL, &timeout) ;
+		num_ready = select(max_sd + 1, &tmp_read_fds, &tmp_write_fds, NULL, &timeout) ;
 
 		// check if select failed 
 		if ( num_ready < 0 ) {
@@ -43,38 +45,87 @@ void TCPServer::runServer() {
 		else if ( num_ready == 0 ) {
 		}
 		else {
-			// iterate through the processes that are ready
-			iterateFDSet(&working_fds, num_ready) ;
-			//iterateFDSet(&writing_fds, num_ready, max_sd, socket) ;
+			// iterate read and then write sets.
+			iterateWriteSet(&tmp_write_fds, iterateReadSet(&tmp_read_fds, num_ready)) ;
 		}
 
 	}
 }
 
-void TCPServer::iterateFDSet(fd_set *ready_set, int &ready_count) {
+int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 
 	int loop_max = max_sd ; // max_sd could change, when addClients is called
 	for (int i=0 ; i <= loop_max && ready_count > 0; i++) {
 		if ( !(FD_ISSET(i, ready_set)) )
 			continue ;
 
+		ready_count--;
 		if (i == server_socket ) {
-		// accept all incomming connections
 			addClients() ;
+		} else if ( i == tcp_pipe->getSRead() ) {
+
+			// read threadpool message
+			Thread_output* helper = new Thread_output ;
+			read(i, helper, sizeof(Thread_output) ) ;
+
+			// update client data
+			ClientData data = client_map[helper->socket_id] ;
+			data.file_addr = helper->memory_map ;
+			data.total_bytes = helper->num_bytes ;
+			data.state = SENDING_FILE ;
+			client_map[helper->socket_id] = data;
+
+			// close files and dynamic mem
+			close(helper->fd) ; // should be ok to close here
+			delete helper ;
+
 		} else {
-			char buffer[255] ;
+			Thread_input to_thread ;
+			to_thread.socket_id = i;
+
 			int recv_count ;
-			memset(buffer, 0, 255) ;
-			recv_count = recv(i, buffer, 255, 0 ) ;
+			recv_count = recv(i, to_thread.filename, MAX_FILENAME - 1, 0 ) ; // TODO: loop until newline?
 			if ( recv_count <= 0 ) {
 				removeClient(i) ;
 			} else {
-				printf("received message:%s\n", buffer) ;
+				to_thread.filename[recv_count] = 0 ; // add null terminator
+				printf("received message:%s\n", to_thread.filename) ;
+				ClientData data = client_map[i];
+				data.state = WAITING_MMAP ;
+
+				// switch to write set
+				FD_CLR(i, &master_read_fds) ; 
+				FD_SET(i, &master_write_fds) ;
+				client_map[i] = data ;
+
+				// send request to threadpool
+				// TODO: wait until full request received
+				tcp_pipe->serverWrite(&to_thread, sizeof(Thread_input) ) ;
+
 			}
 		}
 	}
-
+	return ready_count ;
 }
+
+int TCPServer::iterateWriteSet(fd_set *write_set, int ready_count) {
+
+	int loop_max = max_sd ; // max_sd could change, when addClients is called
+	for (int i=0 ; i <= loop_max && ready_count > 0; i++) {
+		if ( !(FD_ISSET(i, write_set)) )
+			continue ;
+
+		ready_count--;
+
+		ClientData data = client_map[i] ;
+
+
+		
+	}
+
+	return ready_count ;
+}
+
 
 void TCPServer::addClients() {
 	int new_socket ;
@@ -85,7 +136,7 @@ void TCPServer::addClients() {
 		exitWithError(new_socket < 0 && errno != EWOULDBLOCK, "accept failed\n") ;
 
 		// add new client to map and fd_set
-		FD_SET(new_socket, &master_fds) ; 
+		FD_SET(new_socket, &master_read_fds) ; 
 		ClientData new_client ;
 		client_map[new_socket] = new_client ; 
 
@@ -101,7 +152,7 @@ void TCPServer::addClients() {
 void TCPServer::removeClient(int client) {
 	// TODO: remove any data too
 	// TODO: remove isn't happening until some other event occurs
-	FD_CLR(client, &master_fds) ;
+	FD_CLR(client, &master_read_fds) ;
 	client_map.erase(client) ;
 }
 

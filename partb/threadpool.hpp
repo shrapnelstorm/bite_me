@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include  "twowaypipe.hpp"
+#include "main_header.hpp"
 
 #define FILESIZE (1000 * sizeof(char)) // how to fix this?
 #define STD_IN 0
@@ -48,31 +49,5 @@ class Thread_pool{
 		
 };
 
-/* //TODO: REMOVE later
-struct ThreadInit{
-	TwoWayPipe tcp_pipe ;
-	TwoWayPipe tpool_pipe ;
-	int thread_id ;
-};
-*/
-
-struct Thread_input{
-	int socket_id;
-	char *filename;
-};
-
-class Thread_output{
-	void *memory_map;
-	int socket_id;
-	int fd;
-public: 
-	Thread_output(void *mmp,int s_id, int fd);
-};
-
-struct thread_pool_input{
-	int pipe_write;
-	int socket_id;
-	
-};
 
 #endif // THREADPOOL_HPP

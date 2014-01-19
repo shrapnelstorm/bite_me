@@ -26,4 +26,5 @@ int main(int argc, char** argv) {
 void* runThreadPool(void* pipe) {
 	Thread_pool* thread_pool = Thread_pool::getThreadPool() ;
 	thread_pool->setTCPPipe( *((TwoWayPipe *)pipe) ) ;
+	return NULL ;
 }

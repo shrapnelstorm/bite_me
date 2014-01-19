@@ -2,18 +2,13 @@
 // until we resolve a serialization issue.
 #include <iostream>
 #include "threadpool.hpp"
+#include "main_header.hpp"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 
 Thread_pool* Thread_pool::tp_instance = NULL ;
-
-Thread_output::Thread_output(void* mmp, int s_id, int fd){
-	memory_map = mmp; // do we need a copy constructor here?
-	socket_id = s_id;
-	fd = fd;
-}
 
 Thread_pool::Thread_pool(){
 	thread_pool() ;
@@ -70,8 +65,13 @@ void* Thread_pool::helper_thread(void *t_id){
 			// TODO: how should we respond? should we keep trying?	
 		}
 		
-		Thread_output output(map,input.socket_id,fd);
+		Thread_output output ;
+		output.memory_map = map;
+		output.socket_id = input.socket_id ;
+		output.fd = fd;
+		output.num_bytes = getByteSize(input.filename) ;
 		// send output via pipe
+		// TODO: THIS WRITE NEEDS TO BE CONCURRENT
 		//tcp_pipe.threadpoolWrite(output,sizeof(output));
 		tpool->makeHelperAvailable(thread_id) ;
 	}
