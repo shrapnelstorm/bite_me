@@ -8,8 +8,9 @@
 #define STD_OUT 1
 #define thread_no 50
 
-pthread_mutex_t thread_avail[thread_no] = {PTHREAD_MUTEX_INITIALIZER}
-int avail[k];
+pthread_mutex_t thread_avail[thread_no] = {PTHREAD_MUTEX_INITIALIZER};
+pthread_mutex_t server_wlock = PTHREAD_MUTEX_INITIALIZER;
+int avail[thread_no];
 
 struct Thread_input{
 	int socket_id;
@@ -37,7 +38,7 @@ Thread_output::Thread_output(void *mmp, int s_id){
 class Thread_pool{
 	private:
 		TwoWayPipe p;
-		TwoWayPipe pipe_threads[k];
+		TwoWayPipe pipe_threads[thread_no];
 	public:
 		Thread_pool(TwoWayPipe p);
 		void *helper_thread(void *pipe_rw);
@@ -86,15 +87,15 @@ Thread_pool::void *helper_thread(void *thread_id){
 }
 
 Thread_pool::void *thread_pool(void *input){
-	pthread_t thread[k];
+	pthread_t thread[thread_no];
 	int i;
-	for(i=0;i<k;i++){
+	for(i=0;i<therad_no;i++){
 		pthread_create(&thread[i],NULL,helper_thread,(void *)i);	
 	}
 	Thread_input input;
 	while(1){
 		read(p.tp_read,input,sizeof(input));
-		for(i=0;i<k;i++){
+		for(i=0;i<thread_no;i++){
 			pthread_mutex_lock(&thread_avail[i]);
 			if(avail[i]){
 				avail[i] = 0;
@@ -103,6 +104,8 @@ Thread_pool::void *thread_pool(void *input){
 			}
 			pthread_mutex_unlock(&thread_avail[i]);		
 		}
+		pthreads_mutex_lock(&server_wlock);
 		write(pipe_threads[i].s_write,input,sizeof(input));
+		pthreads_mutex_unlock(&server_wlock);
 	}		
 }
