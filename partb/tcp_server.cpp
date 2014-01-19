@@ -1,9 +1,10 @@
 #include "tcp_server.hpp"
 #include <iostream>
 
-TCPServer::TCPServer(char address[], char port[]) {
+TCPServer::TCPServer(char address[], char port[], TwoWayPipe* pipe) {
 	initServer(address, port) ;
 	bindSocketAndListen() ;
+	tcp_pipe = pipe ;
 }
 
 /* free address info list and close connection

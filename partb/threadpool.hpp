@@ -1,3 +1,5 @@
+// XXX: Ensure TWoWayPipe copies are passed as pointers !!!
+
 /* This file contains code to run the threadpool of an AMTED server
  *
  *

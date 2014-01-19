@@ -2,6 +2,7 @@
 #define TCP_SERVER
 
 #include "main_header.hpp"
+#include "twowaypipe.hpp"
 /*
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,10 +29,11 @@ class TCPServer {
 		struct addrinfo server_info, *server_info_list ;
 		int server_socket ;
 		fd_set 	master_fds, working_fds ; // socket descriptors we're listening to
+		TwoWayPipe* tcp_pipe ;
 		int  max_sd, new_fd ; // max_fd stores highest valued fd
 
 	public:
-		TCPServer(char address[], char port[]) ;
+		TCPServer(char address[], char port[], TwoWayPipe* pipe) ;
 		~TCPServer() ;
 		void runServer() ;
 
