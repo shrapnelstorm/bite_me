@@ -1,4 +1,4 @@
-TARGETS=550server 550server.o tcp_server.o main_header.o
+TARGETS=550server 550server.o tcp_server.o main_header.o threadpool.o
 
 550server: 550server.o pipe.hpp tcp_server.o main_header.o
 	g++ -g -o 550server main_header.o tcp_server.o 550server.o
@@ -8,6 +8,8 @@ main_header.o: main_header.hpp main_header.cpp
 	g++ -Wall -g -c main_header.cpp
 550server.o: main_header.hpp 550server.cpp
 	g++ -Wall -g -c 550server.cpp
+threadpool.o: threadpool.hpp threadpool.cpp
+	g++ -Wall -g -c threadpool.cpp
 
 all: $(TARGETS)
 
