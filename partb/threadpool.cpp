@@ -45,7 +45,7 @@ void* Thread_pool::helper_thread(void *t_id){
 	Thread_pool* tpool = Thread_pool::getThreadPool() ;
 	// TODO: make these pointers!!
 	TwoWayPipe* tpool_pipe = &(tpool->pipe_threads[thread_id]) ;
-	TwoWayPipe* tcp_pipe = &(tpool->p) ;
+	TwoWayPipe* tcp_pipe = tpool->p ;
 
 	int fd;
 	void* map;
@@ -90,7 +90,7 @@ void Thread_pool::runThreadpool() {
 	int i ;
 	Thread_input input;
 	while(1){
-		//p.threadpoolRead(input,sizeof(input));
+		p->threadpoolRead(&input,sizeof(input));
 		for(i=0;i<thread_no;i++){
 			// TODO: better way to handle notifications?
 			// This will slow down our threadpool
@@ -102,7 +102,7 @@ void Thread_pool::runThreadpool() {
 			}
 			pthread_mutex_unlock(&(thread_avail[i]));		
 		}
-		//pipe_threads[i].serverWrite(&input, sizeof(input)) ;
+		pipe_threads[i].serverWrite(&input, sizeof(input)) ;
 	}		
 }
 

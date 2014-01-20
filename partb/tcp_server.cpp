@@ -16,6 +16,7 @@ TCPServer::~TCPServer() {
 
 void TCPServer::runServer() {
 	
+	printf("running server\n") ;
 	// no timeout. Our server uses select() for polling
 	timeval	timeout ;
 	timeout.tv_sec = 0 ; 
@@ -23,7 +24,7 @@ void TCPServer::runServer() {
 
 	max_sd = server_socket ; // max_fd stores highest valued fd
 	FD_SET(server_socket, &master_read_fds) ; // add server socket 
-	FD_SET(tcp_pipe->getSRead(), &master_read_fds) ; // add tpool pipe 
+	//FD_SET(tcp_pipe->getSRead(), &master_read_fds) ; // add tpool pipe 
 
 	// listen for connections & process existing conn.
 	int num_ready = 0 ;
@@ -34,19 +35,30 @@ void TCPServer::runServer() {
 
 		// call select()
 		//select(max_file_desc, read_set, write_set, exceptions, timeout)
-		num_ready = select(max_sd + 1, &tmp_read_fds, &tmp_write_fds, NULL, &timeout) ;
+		//num_ready = select(max_sd + 1, &tmp_read_fds, &tmp_write_fds, NULL, &timeout) ;
+		num_ready = select(max_sd + 1, &tmp_read_fds, NULL, NULL, &timeout) ;
 
 		// check if select failed 
 		if ( num_ready < 0 ) {
+			printf("select error %i \n", errno ) ;
+			if (errno == EBADF )
+				printf("EBADF\n") ;
+			if (errno == EINTR )
+				printf("EINTR\n") ;
+			if (errno == EINVAL )
+				printf("EINVAL\n") ;
+			if (errno == ENOMEM )
+				printf("ENOMEM\n") ;
 		}
-
 		// select() timed out, this shouldn't happen since we're using
 		// select() for polling
 		else if ( num_ready == 0 ) {
+			//printf("zero error \n") ;
 		}
 		else {
 			// iterate read and then write sets.
-			iterateWriteSet(&tmp_write_fds, iterateReadSet(&tmp_read_fds, num_ready)) ;
+			//iterateWriteSet(&tmp_write_fds, iterateReadSet(&tmp_read_fds, num_ready)) ;
+			iterateReadSet(&tmp_read_fds, num_ready) ;
 		}
 
 	}
@@ -54,6 +66,7 @@ void TCPServer::runServer() {
 
 int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 
+	printf("running iterate read\n") ;
 	int loop_max = max_sd ; // max_sd could change, when addClients is called
 	for (int i=0 ; i <= loop_max && ready_count > 0; i++) {
 		if ( !(FD_ISSET(i, ready_set)) )
@@ -61,8 +74,10 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 
 		ready_count--;
 		if (i == server_socket ) {
+			printf("case 1\n") ;
 			addClients() ;
 		} else if ( i == tcp_pipe->getSRead() ) {
+			printf("case 2\n") ;
 
 			// read threadpool message
 			Thread_output* helper = new Thread_output ;
@@ -78,14 +93,17 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 			delete helper ;
 
 		} else {
+			printf("case 3\n") ;
 			Thread_input to_thread ;
 			to_thread.socket_id = i;
 
 			int recv_count ;
 			recv_count = recv(i, to_thread.filename, MAX_FILENAME - 1, 0 ) ; // TODO: loop until newline?
 			if ( recv_count <= 0 ) {
+				printf("case 4\n") ;
 				removeClient(i) ;
 			} else {
+				printf("case 5\n") ;
 				to_thread.filename[recv_count] = 0 ; // add null terminator
 				printf("received message:%s\n", to_thread.filename) ;
 				ClientData data = client_map[i];

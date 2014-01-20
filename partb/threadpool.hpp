@@ -18,13 +18,13 @@
 #define FILESIZE (1000 * sizeof(char)) // how to fix this?
 #define STD_IN 0
 #define STD_OUT 1
-#define thread_no 50
+#define thread_no 2
 
 
 // this class is a singleton
 class Thread_pool{
 	private:
-		TwoWayPipe p; // communicate with server
+		TwoWayPipe* p; // communicate with server
 		TwoWayPipe pipe_threads[thread_no]; // helper thread communication
 
 		// pthreads 
@@ -40,7 +40,7 @@ class Thread_pool{
 		static Thread_pool* getThreadPool() ;
 		
 		// TODO: be sure this code is called, before we run!!!
-		void setTCPPipe(TwoWayPipe p) { this->p = p ; } 
+		void setTCPPipe(TwoWayPipe* p) { this->p = p ; } 
 	private:
 		Thread_pool(); // thread pool will be a singleton
 		static void* helper_thread(void *pipe_rw);
