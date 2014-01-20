@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// TODO: for debugging purposes only
+#include <unistd.h>
+#include <errno.h>
+
 char FILE_ERROR[] = "could not find file\n" ; 
 char MMAP_ERROR[] = "server out of memory\n" ; 
 
@@ -78,6 +82,7 @@ void* Thread_pool::helper_thread(void *t_id){
 		// send output via pipe
 		pthread_mutex_lock(&(tpool->server_mutex));
 		tcp_pipe->threadpoolWrite(&output,sizeof(output));
+		printf("writing to server with %i\n", tcp_pipe->getTPWrite() ) ;
 		pthread_mutex_unlock(&(tpool->server_mutex));
 
 		// signal ready for next task

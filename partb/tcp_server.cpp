@@ -1,5 +1,6 @@
 #include "tcp_server.hpp"
 #include <iostream>
+#include <sys/mman.h>
 
 TCPServer::TCPServer(char address[], char port[], TwoWayPipe* pipe) {
 	initServer(address, port) ;
@@ -24,7 +25,7 @@ void TCPServer::runServer() {
 
 	max_sd = server_socket ; // max_fd stores highest valued fd
 	FD_SET(server_socket, &master_read_fds) ; // add server socket 
-	//FD_SET(tcp_pipe->getSRead(), &master_read_fds) ; // add tpool pipe 
+	FD_SET(tcp_pipe->getSRead(), &master_read_fds) ; // add tpool pipe 
 
 	// listen for connections & process existing conn.
 	int num_ready = 0 ;
@@ -35,8 +36,8 @@ void TCPServer::runServer() {
 
 		// call select()
 		//select(max_file_desc, read_set, write_set, exceptions, timeout)
-		//num_ready = select(max_sd + 1, &tmp_read_fds, &tmp_write_fds, NULL, &timeout) ;
-		num_ready = select(max_sd + 1, &tmp_read_fds, NULL, NULL, &timeout) ;
+		num_ready = select(max_sd + 1, &tmp_read_fds, &tmp_write_fds, NULL, &timeout) ;
+		//num_ready = select(max_sd + 1, &tmp_read_fds, NULL, NULL, &timeout) ;
 
 		// check if select failed 
 		if ( num_ready < 0 ) {
@@ -57,8 +58,8 @@ void TCPServer::runServer() {
 		}
 		else {
 			// iterate read and then write sets.
-			//iterateWriteSet(&tmp_write_fds, iterateReadSet(&tmp_read_fds, num_ready)) ;
-			iterateReadSet(&tmp_read_fds, num_ready) ;
+			iterateWriteSet(&tmp_write_fds, iterateReadSet(&tmp_read_fds, num_ready)) ;
+			//iterateReadSet(&tmp_read_fds, num_ready) ;
 		}
 
 	}
@@ -66,22 +67,35 @@ void TCPServer::runServer() {
 
 int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 
-	printf("running iterate read\n") ;
+	// delete later
+	printf("running iterate read max_socket is %i ready:%i\n", max_sd, ready_count) ;
+	for (int i=0 ; i <= max_sd && ready_count > 0; i++) 
+		if ( FD_ISSET(i, &master_read_fds) )
+			printf("master has %i\n", i) ;
+
+	for (int i=0 ; i <= max_sd && ready_count > 0; i++) 
+		if ( FD_ISSET(i, ready_set) )
+			printf("ready has %i\n", i) ;
+	
+	// end delete
+
 	int loop_max = max_sd ; // max_sd could change, when addClients is called
 	for (int i=0 ; i <= loop_max && ready_count > 0; i++) {
 		if ( !(FD_ISSET(i, ready_set)) )
 			continue ;
 
 		ready_count--;
+		printf("socket %i is ready\n", i) ;
 		if (i == server_socket ) {
 			printf("case 1\n") ;
 			addClients() ;
 		} else if ( i == tcp_pipe->getSRead() ) {
-			printf("case 2\n") ;
 
 			// read threadpool message
 			Thread_output* helper = new Thread_output ;
 			read(i, helper, sizeof(Thread_output) ) ;
+
+			printf("data: socket:%i, addr: %i, byte: %i\n", helper->socket_id, helper->memory_map, helper->num_bytes) ;
 
 			// update client data
 			ClientData data = client_map[helper->socket_id] ;
@@ -89,6 +103,10 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 			data.total_bytes = helper->num_bytes ;
 			data.state = SENDING_FILE ;
 			client_map[helper->socket_id] = data;
+
+			// move socket_id to write_set
+			FD_CLR(helper->socket_id, &master_read_fds) ;
+			FD_SET(helper->socket_id, &master_write_fds) ;
 
 			delete helper ;
 
@@ -98,14 +116,19 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 			to_thread.socket_id = i;
 
 			int recv_count ;
-			recv_count = recv(i, to_thread.filename, MAX_FILENAME - 1, 0 ) ; // TODO: loop until newline?
+			char buffer[MAX_FILENAME] ;
+			recv_count = recv(i, buffer, MAX_FILENAME - 1, 0 ) ; // TODO: loop until newline?
+			buffer[recv_count] = '\0' ;
+
 			if ( recv_count <= 0 ) {
 				printf("case 4\n") ;
 				removeClient(i) ;
 			} else {
 				printf("case 5\n") ;
-				to_thread.filename[recv_count] = 0 ; // add null terminator
-				printf("received message:%s\n", to_thread.filename) ;
+				strncpy(to_thread.filename, strtok(buffer, "\r\n"), MAX_FILENAME) ;
+				for ( int i = 0 ; i < strlen(to_thread.filename) ; i++ ) {
+					printf( "%c, %i\n", to_thread.filename[i], to_thread.filename[i] ) ;
+				}
 				ClientData data = client_map[i];
 				data.state = WAITING_MMAP ;
 
@@ -117,7 +140,6 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 				// send request to threadpool
 				// TODO: wait until full request received
 				tcp_pipe->serverWrite(&to_thread, sizeof(Thread_input) ) ;
-
 			}
 		}
 	}
@@ -136,9 +158,15 @@ int TCPServer::iterateWriteSet(fd_set *write_set, int ready_count) {
 		ClientData data = client_map[i] ;
 		data.bytes_sent += send( i, ((char *)data.file_addr) + data.bytes_sent, data.total_bytes - data.bytes_sent, 0) ;
 		client_map[i] = data ;
+		printf("sent %i bytes out of %i to client %i\n", data.bytes_sent, data.total_bytes, i) ;
 
 		if ( data.bytes_sent >= data.total_bytes ) {
+			printf("client will be removed\n") ;
+			// unmap
+			exitWithError(munmap(data.file_addr, data.total_bytes) == -1, "unmap error\n") ;
 			removeClient(i) ;
+
+
 		} 
 	}
 
@@ -174,6 +202,7 @@ void TCPServer::removeClient(int client) {
 	FD_CLR(client, &master_read_fds) ;
 	FD_CLR(client, &master_write_fds) ;
 	client_map.erase(client) ;
+	close(client) ;
 }
 
 /*
