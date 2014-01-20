@@ -24,6 +24,8 @@ void TCPServer::runServer() {
 	timeout.tv_usec = 0 ;
 
 	max_sd = server_socket ; // max_fd stores highest valued fd
+	FD_ZERO(&master_read_fds) ;
+	FD_ZERO(&master_write_fds) ;
 	FD_SET(server_socket, &master_read_fds) ; // add server socket 
 	FD_SET(tcp_pipe->getSRead(), &master_read_fds) ; // add tpool pipe 
 
@@ -105,7 +107,6 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 			client_map[helper->socket_id] = data;
 
 			// move socket_id to write_set
-			FD_CLR(helper->socket_id, &master_read_fds) ;
 			FD_SET(helper->socket_id, &master_write_fds) ;
 
 			delete helper ;
@@ -134,7 +135,6 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 
 				// switch to write set
 				FD_CLR(i, &master_read_fds) ; 
-				FD_SET(i, &master_write_fds) ;
 				client_map[i] = data ;
 
 				// send request to threadpool
@@ -149,6 +149,11 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 int TCPServer::iterateWriteSet(fd_set *write_set, int ready_count) {
 
 	int loop_max = max_sd ; // max_sd could change, when addClients is called
+	// remove later
+	for (int i=0 ; i <= loop_max && ready_count > 0; i++) {
+		if ( (FD_ISSET(i, write_set)) )
+			printf("write has %i\n", i) ;
+	}
 	for (int i=0 ; i <= loop_max && ready_count > 0; i++) {
 		if ( !(FD_ISSET(i, write_set)) )
 			continue ;

@@ -18,14 +18,14 @@
 #define FILESIZE (1000 * sizeof(char)) // how to fix this?
 #define STD_IN 0
 #define STD_OUT 1
-#define thread_no 2
+#define thread_no 50
 
 
 // this class is a singleton
 class Thread_pool{
 	private:
 		TwoWayPipe* p; // communicate with server
-		TwoWayPipe pipe_threads[thread_no]; // helper thread communication
+		TwoWayPipe* pipe_threads[thread_no]; // helper thread communication
 
 		// pthreads 
 		pthread_t thread[thread_no];
@@ -36,6 +36,7 @@ class Thread_pool{
 
 		static Thread_pool* tp_instance ;
 	public:
+		~Thread_pool() ;
 		void runThreadpool() ;
 		static Thread_pool* getThreadPool() ;
 		

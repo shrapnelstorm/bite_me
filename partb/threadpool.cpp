@@ -18,12 +18,20 @@ char MMAP_ERROR[] = "server out of memory\n" ;
 Thread_pool* Thread_pool::tp_instance = NULL ;
 
 Thread_pool::Thread_pool(){
+	for ( int i = 0 ; i < thread_no ; i++ ) {
+		pipe_threads[i] = new TwoWayPipe ; // helper thread communication
+		printf(" I created a pipe !!! \n") ;
+	}
 	thread_pool() ;
 
 	// set the availability of each thread to 1
 	for ( int i = 0 ; i < thread_no; i++) {
 		avail[i] = 1;
 	}
+}
+Thread_pool::~Thread_pool() {
+	for ( int i = 0 ; i < thread_no ; i++ ) 
+		delete pipe_threads[i] ; 
 }
 
 Thread_pool* Thread_pool::getThreadPool() {
@@ -48,7 +56,7 @@ void* Thread_pool::helper_thread(void *t_id){
 
 	Thread_pool* tpool = Thread_pool::getThreadPool() ;
 	// TODO: make these pointers!!
-	TwoWayPipe* tpool_pipe = &(tpool->pipe_threads[thread_id]) ;
+	TwoWayPipe* tpool_pipe = (tpool->pipe_threads[thread_id]) ;
 	TwoWayPipe* tcp_pipe = tpool->p ;
 
 	int fd;
@@ -107,7 +115,7 @@ void Thread_pool::runThreadpool() {
 			}
 			pthread_mutex_unlock(&(thread_avail[i]));		
 		}
-		pipe_threads[i].serverWrite(&input, sizeof(input)) ;
+		pipe_threads[i]->serverWrite(&input, sizeof(input)) ;
 	}		
 }
 
