@@ -75,8 +75,6 @@ int TCPServer::iterateReadSet(fd_set *ready_set, int ready_count) {
 			data.state = SENDING_FILE ;
 			client_map[helper->socket_id] = data;
 
-			// close files and dynamic mem
-			close(helper->fd) ; // should be ok to close here
 			delete helper ;
 
 		} else {
@@ -118,9 +116,12 @@ int TCPServer::iterateWriteSet(fd_set *write_set, int ready_count) {
 		ready_count--;
 
 		ClientData data = client_map[i] ;
+		data.bytes_sent += send( i, ((char *)data.file_addr) + data.bytes_sent, data.total_bytes - data.bytes_sent, 0) ;
+		client_map[i] = data ;
 
-
-		
+		if ( data.bytes_sent >= data.total_bytes ) {
+			removeClient(i) ;
+		} 
 	}
 
 	return ready_count ;
@@ -153,6 +154,7 @@ void TCPServer::removeClient(int client) {
 	// TODO: remove any data too
 	// TODO: remove isn't happening until some other event occurs
 	FD_CLR(client, &master_read_fds) ;
+	FD_CLR(client, &master_write_fds) ;
 	client_map.erase(client) ;
 }
 

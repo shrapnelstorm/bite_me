@@ -18,7 +18,6 @@
 #include <sys/stat.h> // for file info
 
 const int MAX_FILENAME = 100 ;
-//const char* FILE_ERROR = "could not find file\n" ; 
 
 // XXX: figure out weird default argument error
 void exitWithError(bool , const char [], int ) ;
@@ -33,7 +32,6 @@ struct Thread_input{
 struct Thread_output{
 	void* memory_map;
 	int socket_id;
-	int fd;
 	size_t num_bytes ;
 };
 

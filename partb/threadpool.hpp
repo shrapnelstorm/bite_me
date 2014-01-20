@@ -31,6 +31,8 @@ class Thread_pool{
 		pthread_t thread[thread_no];
 		int avail[thread_no];
 		pthread_mutex_t thread_avail[thread_no] = {PTHREAD_MUTEX_INITIALIZER} ;
+		pthread_mutex_t server_mutex = PTHREAD_MUTEX_INITIALIZER ;
+
 
 		static Thread_pool* tp_instance ;
 	public:

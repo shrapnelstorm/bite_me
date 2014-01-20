@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+char FILE_ERROR[] = "could not find file\n" ; 
+char MMAP_ERROR[] = "server out of memory\n" ; 
+
 
 Thread_pool* Thread_pool::tp_instance = NULL ;
 
@@ -17,7 +20,6 @@ Thread_pool::Thread_pool(){
 	for ( int i = 0 ; i < thread_no; i++) {
 		avail[i] = 1;
 	}
-
 }
 
 Thread_pool* Thread_pool::getThreadPool() {
@@ -41,38 +43,44 @@ void* Thread_pool::helper_thread(void *t_id){
 	delete ((int*) t_id) ; // free heap memory
 
 	Thread_pool* tpool = Thread_pool::getThreadPool() ;
-	TwoWayPipe tpool_pipe = tpool->pipe_threads[thread_id] ;
-	TwoWayPipe tcp_pipe = tpool->p ;
+	// TODO: make these pointers!!
+	TwoWayPipe* tpool_pipe = &(tpool->pipe_threads[thread_id]) ;
+	TwoWayPipe* tcp_pipe = &(tpool->p) ;
 
 	int fd;
 	void* map;
-	int result;
 	Thread_input input;
-	//result = dup2(pipe_rw.read, STD_IN);
-	//if(result == -1){
-	//	perror("dup2 failed");	
-	//}	
 	while(1){
-		//int read_size = tpool_pipe.threadpoolRead(input, sizeof(input));
+		int read_size = tpool_pipe->threadpoolRead(&input, sizeof(input));
 		fd = open(input.filename, O_RDONLY);
+
+		Thread_output output ;
 		if(fd == -1){
-			perror("Error opening file");
-			// should we exit here?	
-			// TODO: notify tcp server that file isn't available
-		}
-		map = mmap(0,FILESIZE, PROT_READ, MAP_SHARED,fd,0);
-		if(map == MAP_FAILED){
-			// TODO: how should we respond? should we keep trying?	
+			perror("Error opening file\n");
+			output.memory_map = FILE_ERROR ;
+			output.num_bytes = strlen(FILE_ERROR)*sizeof(char) ;
+		} else { // mmap the file
+			map = mmap(0,FILESIZE, PROT_READ, MAP_SHARED,fd,0);
+
+			if(map == MAP_FAILED){
+				perror("Error mapping memory\n") ;
+				output.memory_map = MMAP_ERROR ;
+				output.num_bytes = strlen(MMAP_ERROR)*sizeof(char) ;
+			} else {
+				output.memory_map = map;
+				output.num_bytes = getByteSize(input.filename) ;
+			}
 		}
 		
-		Thread_output output ;
-		output.memory_map = map;
 		output.socket_id = input.socket_id ;
-		output.fd = fd;
-		output.num_bytes = getByteSize(input.filename) ;
+		close(fd) ;
+
 		// send output via pipe
-		// TODO: THIS WRITE NEEDS TO BE CONCURRENT
-		//tcp_pipe.threadpoolWrite(output,sizeof(output));
+		pthread_mutex_lock(&(tpool->server_mutex));
+		tcp_pipe->threadpoolWrite(&output,sizeof(output));
+		pthread_mutex_unlock(&(tpool->server_mutex));
+
+		// signal ready for next task
 		tpool->makeHelperAvailable(thread_id) ;
 	}
 	return NULL ;
