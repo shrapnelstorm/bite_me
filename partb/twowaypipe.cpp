@@ -3,7 +3,7 @@
 TwoWayPipe::TwoWayPipe() {
 	setupSinglePipe(s_read, tp_write) ;
 	setupSinglePipe(tp_read, s_write) ;
-	printf("created pipe with sr: %i, sw: %i, tr: %i, tw: %i \n", s_read, s_write, tp_read, tp_write) ;
+	//printf("created pipe with sr: %i, sw: %i, tr: %i, tw: %i \n", s_read, s_write, tp_read, tp_write) ;
 }
 
 // just close the pipes
@@ -13,10 +13,11 @@ TwoWayPipe::~TwoWayPipe() {
 	close(tp_read);
 	close(tp_write);
 
-	printf("closed pipe with sr: %i, sw: %i, tr: %i, tw: %i \n", s_read, s_write, tp_read, tp_write) ;
+	//printf("closed pipe with sr: %i, sw: %i, tr: %i, tw: %i \n", s_read, s_write, tp_read, tp_write) ;
 }
 
-int TwoWayPipe::setupSinglePipe(int &read, int &write) {
+// function that creates a single pipe
+int TwoWayPipe::setupSinglePipe(int &read, int &write) { 
   int pip[2];
   int result;
   result = pipe(pip);

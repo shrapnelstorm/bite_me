@@ -22,7 +22,7 @@
 
 
 // this class is a singleton
-class Thread_pool{
+class Thread_pool{               // The threadpool class. Main function: Create helper threads, dispatch jobs to the helper threads.
 	private:
 		TwoWayPipe* p; // communicate with server
 		TwoWayPipe* pipe_threads[thread_no]; // helper thread communication
@@ -30,7 +30,7 @@ class Thread_pool{
 		// pthreads 
 		pthread_t thread[thread_no];
 		int avail[thread_no];
-		pthread_mutex_t thread_avail[thread_no] = {PTHREAD_MUTEX_INITIALIZER} ;
+		pthread_mutex_t thread_avail[thread_no] = {PTHREAD_MUTEX_INITIALIZER} ;  // help in concurrency. 'Locks' to check thread availability.
 		pthread_mutex_t server_mutex = PTHREAD_MUTEX_INITIALIZER ;
 
 

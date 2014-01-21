@@ -20,7 +20,6 @@ Thread_pool* Thread_pool::tp_instance = NULL ;
 Thread_pool::Thread_pool(){
 	for ( int i = 0 ; i < thread_no ; i++ ) {
 		pipe_threads[i] = new TwoWayPipe ; // helper thread communication
-		printf(" I created a pipe !!! \n") ;
 	}
 	thread_pool() ;
 
@@ -29,7 +28,7 @@ Thread_pool::Thread_pool(){
 		avail[i] = 1;
 	}
 }
-Thread_pool::~Thread_pool() {
+Thread_pool::~Thread_pool() {    // delete all the 2Way pipes
 	for ( int i = 0 ; i < thread_no ; i++ ) 
 		delete pipe_threads[i] ; 
 }
@@ -43,7 +42,7 @@ Thread_pool* Thread_pool::getThreadPool() {
 }
 
 // ================== thread helper, helper functions ====================
-void Thread_pool::makeHelperAvailable(int helper_id) {
+void Thread_pool::makeHelperAvailable(int helper_id) {   // Used by the helper thread to communicate when available for the next job
 		pthread_mutex_lock(&(thread_avail[helper_id]));
 		avail[helper_id] = 1;
 		pthread_mutex_unlock(&(thread_avail[helper_id]) );
@@ -64,7 +63,7 @@ void* Thread_pool::helper_thread(void *t_id){
 	Thread_input input;
 	while(1){
 		int read_size = tpool_pipe->threadpoolRead(&input, sizeof(input));
-		fd = open(input.filename, O_RDONLY);
+		fd = open(input.filename, O_RDONLY);            // open the file requested for
 
 		Thread_output output ;
 		if(fd == -1){
@@ -72,14 +71,14 @@ void* Thread_pool::helper_thread(void *t_id){
 			output.memory_map = FILE_ERROR ;
 			output.num_bytes = strlen(FILE_ERROR)*sizeof(char) ;
 		} else { // mmap the file
-			map = mmap(0,FILESIZE, PROT_READ, MAP_SHARED,fd,0);
+			map = mmap(0,FILESIZE, PROT_READ, MAP_SHARED,fd,0);      // copy contents to the main memory
 
 			if(map == MAP_FAILED){
 				perror("Error mapping memory\n") ;
 				output.memory_map = MMAP_ERROR ;
 				output.num_bytes = strlen(MMAP_ERROR)*sizeof(char) ;
 			} else {
-				output.memory_map = map;
+				output.memory_map = map;                         // details to be communicated to the server
 				output.num_bytes = getByteSize(input.filename) ;
 			}
 		}
@@ -89,7 +88,7 @@ void* Thread_pool::helper_thread(void *t_id){
 
 		// send output via pipe
 		pthread_mutex_lock(&(tpool->server_mutex));
-		tcp_pipe->threadpoolWrite(&output,sizeof(output));
+		tcp_pipe->threadpoolWrite(&output,sizeof(output));              // Communicating details to the server.
 		printf("writing to server with %i\n", tcp_pipe->getTPWrite() ) ;
 		pthread_mutex_unlock(&(tpool->server_mutex));
 
@@ -99,7 +98,7 @@ void* Thread_pool::helper_thread(void *t_id){
 	return NULL ;
 }
 
-void Thread_pool::runThreadpool() {
+void Thread_pool::runThreadpool() {    // function that allocated jobs to the helper threads
 	int i ;
 	Thread_input input;
 	while(1){
@@ -115,7 +114,7 @@ void Thread_pool::runThreadpool() {
 			}
 			pthread_mutex_unlock(&(thread_avail[i]));		
 		}
-		pipe_threads[i]->serverWrite(&input, sizeof(input)) ;
+		pipe_threads[i]->serverWrite(&input, sizeof(input)) ;   // 'Instructions' sent
 	}		
 }
 
@@ -125,6 +124,6 @@ void Thread_pool::thread_pool(){
 	for(i=0;i<thread_no;i++){
 		int* thread_id  = new int ;
 		*thread_id = i ;
-		pthread_create(&thread[i],NULL,helper_thread,(void *)thread_id);	
+		pthread_create(&thread[i],NULL,helper_thread,(void *)thread_id);    // Thread Creation!!	
 	}
 }
