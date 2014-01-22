@@ -5,8 +5,7 @@
 #include "twowaypipe.hpp"
 #include <map>
 
-// TODO: the current # of connections to wait on is 32, is this adequate
-// TODO: ensure server is closing unused tcp connections
+// NOTE: the current # of connections to wait on is 32, is this adequate
 
 enum State { WAITING_MMAP, SENDING_FILE, DONE, READY } ;
 class ClientData {
@@ -53,7 +52,6 @@ class TCPServer {
 		void addClients() ;
 		void removeClient(int client) ;
 
-		ClientData sentToClient(ClientData data) ;
 };
 
 
