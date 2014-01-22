@@ -1,3 +1,11 @@
+/************************************************************
+ * Program: 550shell
+ *
+ * Desc:	Implements a simple shell that takes commands
+ * 			without arguments. Handles forking and piping
+ * 			for IPC.
+ *************************************************************/
+
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -11,7 +19,9 @@ using namespace std;
 int setup_pip(int &cur_output, int &next_input);
 int init_child(char* cmd, int input, int output);
 
+// standard file descriptors for IO
 const int STD_IN = 0 , STD_OUT = 1 ;
+
 int main() {
 	// read user input
 	char *user_input		= NULL ;
@@ -20,15 +30,19 @@ int main() {
 	const char delim[] 		= " \t\n" ;
 	int pid,length;
 	bool check_background = false;
-	printf("%s", ":)>\n");  /* prompt */
+
+	printf("%s", ":)>\n");  // print prompt
+
 	chars_read = getline(&user_input, &len, stdin) ;
 	length = strlen(user_input); 
+
+	// check for ampersand
 	if(user_input[length-2] == '&'){
 		pid = fork();
 		if(pid == 0){
 			check_background = true;	
 		}
-		else{
+		else{ // parent begins reading new input
 			chars_read = getline(&user_input, &len, stdin) ;	
 		}
 	}
@@ -80,7 +94,6 @@ int main() {
 			snd_token = strtok(NULL, delim) ;
 
 			int status ;
-			// TODO: do we want any options here??
 			waitpid(last_pid, &status, 0 ) ;
 			if(check_background) exit(1);
 		}
@@ -89,8 +102,7 @@ int main() {
 		// read next input
 		printf("%s", ":)>");  /* prompt */
 		getline(&user_input, &len, stdin) ; // read first line and begin looping
-		printf("%s", user_input) ;
-		printf("%i\n", strcmp(user_input, "exit")) ;
+
 		length = strlen(user_input);
 		if(user_input[length-2] == '&'){  // this portion of the code makes sure that the process runs in the background.
 			pid = fork();
@@ -109,6 +121,10 @@ int main() {
 	exit(0) ;
 }
 
+/*
+ * create a pipe and assign its read/write
+ * ends to reference integers
+ */
 int setup_pip(int &cur_output, int &next_input){  // function to set up pipes 
   int pip[2];
   int result;
@@ -125,6 +141,9 @@ int setup_pip(int &cur_output, int &next_input){  // function to set up pipes
   return 1;
 }
 
+/*
+ * setup pipe and call exec() to run a command
+ */
 int init_child(char* cmd, int input, int output){
   int result1,result2;
   result1 = dup2(input,0);
