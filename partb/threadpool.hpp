@@ -21,7 +21,7 @@
 #define FILESIZE (1000 * sizeof(char)) // TODO: how to fix this?
 #define STD_IN 0
 #define STD_OUT 1
-#define thread_no 50
+#define thread_no 10
 
 
 // this class is a singleton

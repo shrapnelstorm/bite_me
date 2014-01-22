@@ -166,7 +166,7 @@ int TCPServer::iterateWriteSet(fd_set *write_set, int ready_count) {
 		// finished transmission to client
 		if ( data.bytes_sent >= data.total_bytes ) {
 			// unmap
-			exitWithError(munmap(data.file_addr, data.total_bytes) == -1, "unmap error\n") ;
+			munmap(data.file_addr, data.total_bytes) ;
 			removeClient(i) ;
 		} 
 	}
