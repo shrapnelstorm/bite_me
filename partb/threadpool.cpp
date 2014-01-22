@@ -114,7 +114,6 @@ void* Thread_pool::helper_thread(void *t_id){
 		// send output via pipe
 		pthread_mutex_lock(&(tpool->server_mutex));
 		tcp_pipe->threadpoolWrite(&output,sizeof(output));              // Communicating details to the server.
-		printf("writing to server with %i\n", tcp_pipe->getTPWrite() ) ;
 		pthread_mutex_unlock(&(tpool->server_mutex));
 
 		// signal ready for next task
