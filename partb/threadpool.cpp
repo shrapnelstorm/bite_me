@@ -1,3 +1,7 @@
+/************************************************************
+ * Program: Threadpool class implementation
+ * Desc:
+ *************************************************************/
 // XXX: WARNING, I've disabled all pipe write and read lines
 // until we resolve a serialization issue.
 #include <iostream>

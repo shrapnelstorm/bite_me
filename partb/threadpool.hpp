@@ -1,10 +1,13 @@
-// XXX: Ensure TWoWayPipe copies are passed as pointers !!!
-
-/* This file contains code to run the threadpool of an AMTED server
+/************************************************************
+ * Program: Threadpool class declaration
  *
- *
- */
-
+ * Desc: 	Specification for the threadpool of an AMTED server.
+ * 			We create thread_no pthreads which run a helper function
+ * 			to load mmap()ed files. A separate pipe exists between
+ * 			each helper thread and the main threadpool.
+ * 			Helper threads do a blocking read on the pipe
+ * 			to avoid busy waiting.
+ *************************************************************/
 #ifndef THREADPOOL_HPP
 #define THREADPOOL_HPP
 #include <stdio.h>
@@ -15,7 +18,7 @@
 #include  "twowaypipe.hpp"
 #include "main_header.hpp"
 
-#define FILESIZE (1000 * sizeof(char)) // how to fix this?
+#define FILESIZE (1000 * sizeof(char)) // TODO: how to fix this?
 #define STD_IN 0
 #define STD_OUT 1
 #define thread_no 50
