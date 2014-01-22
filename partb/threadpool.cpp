@@ -87,7 +87,7 @@ void* Thread_pool::helper_thread(void *t_id){
 	void* map;
 	Thread_input input;
 	while(1){
-		int read_size = tpool_pipe->threadpoolRead(&input, sizeof(input));
+		tpool_pipe->threadpoolRead(&input, sizeof(input));
 		fd = open(input.filename, O_RDONLY);            // open the file requested for
 
 		Thread_output output ;
