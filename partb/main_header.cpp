@@ -1,4 +1,6 @@
-
+/***********************************************************************
+ * Description: Functions to handle errors and obtain the size of a file.
+ ***********************************************************************/
 #include "main_header.hpp"
 #include <sys/stat.h>
 

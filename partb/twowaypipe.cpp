@@ -1,22 +1,30 @@
+/************************************************************
+ * Desc: This implements a two way pipe.
+ *************************************************************/
+
 #include "twowaypipe.hpp"
 
+/*
+  Constructor: Creates 2 pipes
+*/
 TwoWayPipe::TwoWayPipe() {
 	setupSinglePipe(s_read, tp_write) ;
 	setupSinglePipe(tp_read, s_write) ;
-	//printf("created pipe with sr: %i, sw: %i, tr: %i, tw: %i \n", s_read, s_write, tp_read, tp_write) ;
 }
 
-// just close the pipes
+/*
+ Destructor: Closes the pipes.
+*/
 TwoWayPipe::~TwoWayPipe() {
 	close(s_read);
 	close(s_write);
 	close(tp_read);
 	close(tp_write);
-
-	//printf("closed pipe with sr: %i, sw: %i, tr: %i, tw: %i \n", s_read, s_write, tp_read, tp_write) ;
 }
 
-// function that creates a single pipe
+/*
+ Function that creates a single pipe
+*/
 int TwoWayPipe::setupSinglePipe(int &read, int &write) { 
   int pip[2];
   int result;
@@ -33,20 +41,30 @@ int TwoWayPipe::setupSinglePipe(int &read, int &write) {
   return 1;
 }
 
+/*
+  Function that performs a read on the server end
+*/
 size_t TwoWayPipe::serverRead(void* buf, size_t nbytes) {
 	return read(s_read, buf, nbytes) ;
 }
 
+/*
+  Function that performs a write on the server end
+*/
 size_t TwoWayPipe::serverWrite(const void* buf, size_t nbytes) {
 	return write(s_write, buf, nbytes) ;
 }
 
+/*
+  Function that performs a read on the threadpool end
+*/
 size_t TwoWayPipe::threadpoolRead(void* buf, size_t nbytes) {
 	return read(tp_read, buf, nbytes) ;
 }
 
-//TODO: add code here to keep trying the write, unless 
-// configured not to.
+/*
+  Function that performs a read on the threadpool end
+*/
 size_t TwoWayPipe::threadpoolWrite(const void* buf, size_t nbytes) {
 	return write(tp_write, buf, nbytes) ;
 }

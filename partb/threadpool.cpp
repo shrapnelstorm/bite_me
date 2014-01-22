@@ -1,9 +1,12 @@
 /************************************************************
  * Program: Threadpool class implementation
- * Desc:
+ * Desc: This implements a theradpool which spawns 'k' helper 
+         threads to handle the job of loading the file to the
+         main memory. The threadpool and the helper functions
+         communicate via pipes. The helper threads use 'mmap' 
+	 to load files and sends the reference to the server.
  *************************************************************/
-// XXX: WARNING, I've disabled all pipe write and read lines
-// until we resolve a serialization issue.
+
 #include <iostream>
 #include "threadpool.hpp"
 #include "main_header.hpp"
@@ -11,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// TODO: for debugging purposes only
+// TODO:for debugging purposes only
 #include <unistd.h>
 #include <errno.h>
 
@@ -21,6 +24,12 @@ char MMAP_ERROR[] = "server out of memory\n" ;
 
 Thread_pool* Thread_pool::tp_instance = NULL ;
 
+/*
+Constructor which creates pipes to be used to 
+communicate with the helper threads. Also, the 
+availability of all helper threads is 
+initialized to 1.
+*/
 Thread_pool::Thread_pool(){
 	for ( int i = 0 ; i < thread_no ; i++ ) {
 		pipe_threads[i] = new TwoWayPipe ; // helper thread communication
@@ -32,11 +41,16 @@ Thread_pool::Thread_pool(){
 		avail[i] = 1;
 	}
 }
+/*
+Destructor  - free's memory
+*/
 Thread_pool::~Thread_pool() {    // delete all the 2Way pipes
 	for ( int i = 0 ; i < thread_no ; i++ ) 
 		delete pipe_threads[i] ; 
 }
-
+/*
+Creates a new thread pool instance
+*/
 Thread_pool* Thread_pool::getThreadPool() {
 	if ( tp_instance == NULL) {
 		tp_instance = new Thread_pool() ;
@@ -46,19 +60,26 @@ Thread_pool* Thread_pool::getThreadPool() {
 }
 
 // ================== thread helper, helper functions ====================
-void Thread_pool::makeHelperAvailable(int helper_id) {   // Used by the helper thread to communicate when available for the next job
+/*
+  Function used by the helper thread to communicate to the thread pool 
+  on its availablility for the next job
+*/
+void Thread_pool::makeHelperAvailable(int helper_id) {   
 		pthread_mutex_lock(&(thread_avail[helper_id]));
 		avail[helper_id] = 1;
 		pthread_mutex_unlock(&(thread_avail[helper_id]) );
 }
-
+/*
+  The helper thread. Waits for input from the threadpool,
+  fetches the file and writes detials back to the server
+  for read operation.
+*/
 void* Thread_pool::helper_thread(void *t_id){
 
 	const int thread_id = *((int*) t_id) ;
 	delete ((int*) t_id) ; // free heap memory
 
 	Thread_pool* tpool = Thread_pool::getThreadPool() ;
-	// TODO: make these pointers!!
 	TwoWayPipe* tpool_pipe = (tpool->pipe_threads[thread_id]) ;
 	TwoWayPipe* tcp_pipe = tpool->p ;
 
@@ -101,19 +122,25 @@ void* Thread_pool::helper_thread(void *t_id){
 	}
 	return NULL ;
 }
-
-void Thread_pool::runThreadpool() {    // function that allocated jobs to the helper threads
+/*
+  Function that reads inputs from the server, assigns the 
+  job to a helper thread. 
+*/
+void Thread_pool::runThreadpool() {    
 	int i ;
 	Thread_input input;
+	bool job_assigned = true;
 	while(1){
-		p->threadpoolRead(&input,sizeof(input));
+		if(job_assigned){
+			p->threadpoolRead(&input,sizeof(input));
+			job_assigned = false;
+		}
 		for(i=0;i<thread_no;i++){
-			// TODO: better way to handle notifications?
-			// This will slow down our threadpool
 			pthread_mutex_lock(&(thread_avail[i]));
 			if(avail[i]){
 				avail[i] = 0;
 				pthread_mutex_unlock(&(thread_avail[i]));
+				job_assigned = true;
 				break;			
 			}
 			pthread_mutex_unlock(&(thread_avail[i]));		
@@ -122,7 +149,9 @@ void Thread_pool::runThreadpool() {    // function that allocated jobs to the he
 	}		
 }
 
-// XXX: Siva, why did this originally have a void* param??
+/*
+  Function that creates all the required helper threads.
+*/
 void Thread_pool::thread_pool(){
 	int i;
 	for(i=0;i<thread_no;i++){
