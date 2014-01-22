@@ -9,6 +9,8 @@
 * system/subsystem design
 * division of labor (programming-wise)
 * Investigate testing frameworks for code 
-
-### Shell implementation
-* mechanism to handle piping and forking
+### subsystems
+* accepting tcp connections
+* subprocess to read a file into main memory
+* threadpool implementation
+* 
